@@ -1,0 +1,52 @@
+* {
+	display: border-box;
+}
+
+body {
+	height: 150px;
+	width: 250px;
+	margin: none;
+}
+
+#navigate {
+	height: 40%;
+}
+
+/*.row {
+	height: 100%;
+	margin-bottom: 3em;
+}*/
+
+.navBtn {
+	float: left;
+	height: 50px;
+	width: 47%;
+	margin: 0 1%;
+	border: 1px solid silver;
+	cursor: pointer;
+	border-radius: 5px;
+	box-shadow: 0px 1px 0px silver;
+}
+
+.navBtn:hover {
+	box-shadow: 1px 2px 3px #ccc;
+}
+
+.centerHead {
+	text-align: center;
+}
+
+#inbox-icon {
+	height: 50px;
+	width: 60px;
+	display: block;
+	margin: 0 auto;
+}
+
+#gmail-icon {
+	display: block;
+	height: 45px;
+	width: 70px;
+	margin: 0 auto;
+	padding: 2px 0;
+}
