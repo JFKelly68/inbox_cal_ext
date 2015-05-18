@@ -37,16 +37,16 @@ body {
 }
 
 #inbox-icon {
-	height: 50px;
-	width: 60px;
+	height: 40px;
+	width: 50px;
 	display: block;
 	margin: 0 auto;
 }
 
 #gmail-icon {
 	display: block;
-	height: 45px;
-	width: 70px;
+	height: 35px;
+	width: 60px;
 	margin: 0 auto;
 	padding: 2px 0;
 }
