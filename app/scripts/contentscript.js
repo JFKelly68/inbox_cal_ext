@@ -80,6 +80,9 @@ function textNodesUnder(el){
   var n, a="", walk=document.createTreeWalker(el,NodeFilter.SHOW_TEXT,null,false);
   while(n=walk.nextNode()) {
   	if(n.nodeValue) {
+  		// pass in elem and parse the body for any date-related words
+  		// side effect that changes the html
+  		findDates(n);
   		a += n.nodeValue;
   	}
   }
@@ -109,6 +112,15 @@ function checkAttrs(elem){
   return false;
 }
 
+
+function findDates(node) {
+	var testing = chrono.parse(node.nodeValue)
+	console.log("this is chrono: ", testing)
+
+	// (/\b(?:(?:Mon)|(?:Tues?)|(?:Wed(?:nes)?)|(?:Thur?s?)|(?:Fri)|(?:Sat(?:ur)?)|(?:Sun))(?:day)?\b[:\-,]?\s*[a-zA-Z]{3,9}\s+\d{1,2}\s*,?\s*\d{4}/)
+
+	// (January|February|March|April|May|June?|July|August|September|October|November|December)\s(\d\d?).+?(\d\d\d\d)
+}
 
 
 // traverse the tree and if the element has a text node
