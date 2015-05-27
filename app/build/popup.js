@@ -77,7 +77,7 @@ var DateOptions = React.createClass({displayName: "DateOptions",
 	render: function() {
 		var dateList = this.props.data.map(function(obj) {
 			return (
-				React.createElement("div", {person: obj.person}, 
+				React.createElement("div", {className: "dates", person: obj.person}, 
 					obj.date
 				)
 			);

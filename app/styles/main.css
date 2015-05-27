@@ -3,8 +3,8 @@
 }
 
 body {
-	height: 150px;
-	width: 250px;
+	height: 200px;
+	width: 350px;
 	margin: none;
 }
 
@@ -12,24 +12,28 @@ body {
 	height: 40%;
 }
 
-/*.row {
+.row {
 	height: 100%;
-	margin-bottom: 3em;
-}*/
+}
 
 .navBtn {
 	float: left;
-	height: 50px;
+	height: 100%;
 	width: 47%;
 	margin: 0 1%;
 	border: 1px solid silver;
 	cursor: pointer;
 	border-radius: 5px;
 	box-shadow: 0px 1px 0px silver;
+	overflow: hidden;
 }
 
 .navBtn:hover {
-	box-shadow: 1px 2px 3px #ccc;
+	background-color: #EEE;
+}
+
+.navBtn:active {
+	box-shadow: inset 1px 2px 3px #ccc;
 }
 
 .centerHead {
@@ -37,16 +41,24 @@ body {
 }
 
 #inbox-icon {
-	height: 40px;
-	width: 50px;
+	height: 80px;
+	width: 100px;
 	display: block;
 	margin: 0 auto;
 }
 
 #gmail-icon {
 	display: block;
-	height: 35px;
-	width: 60px;
-	margin: 0 auto;
+	height: 70px;
+	width: 110px;
+	margin: 4px auto;
 	padding: 2px 0;
 }
+
+.dates {
+	color: gold;
+	border: 1px solid black;
+}
+
+
+
