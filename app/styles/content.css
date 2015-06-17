@@ -1,0 +1,9 @@
+.james-elem {
+	background-color: rgba(100, 240, 150, 0.5);
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+.james-elem:hover {
+	background-color: rgba(100, 240, 150, 1);
+}

@@ -1,17 +1,14 @@
 'use strict';
 
-var sample = [
-{
-	date: "May 12th, 2015",
-	person: "Chris Kelly",
-	email: "kelly.christopherp@gmail.com"
-},
-{
-	date: "May 25th, 2015",
-	person: "Andrew Fried",
-	email: "kosherpineapple@gmail.com"
-}
-]
+chrome.runtime.getBackgroundPage(function(win) {
+	var sample = win.sample;
+	
+	React.render(
+		<DateOptions data={sample}/>,
+  		document.getElementById('dates')
+	)
+})
+
 
 var NavBtns = React.createClass({
 	goTo: function(queryMap, newUrl) {
@@ -91,8 +88,3 @@ var DateOptions = React.createClass({
 		)
 	}
 })
-
-React.render(
-	<DateOptions data={sample}/>,
-  document.getElementById('dates')
-)

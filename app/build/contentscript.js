@@ -17,11 +17,11 @@ function EmailObj() {
 	this.email = "";
 	this.sendDate = "";
 	this.textBody = "";
+	this.id = Math.floor(Math.random()*1000000);
 };
 
 // change to listen on first element with role="list", maybe
 document.getElementsByTagName("body")[0].addEventListener("click", function(event) {
-	event.preventDefault();
 	var elements = scrapeThread();
 	console.log("not poop", elements);
 })
@@ -51,21 +51,26 @@ var traverseThreadAndBuildObj = function(matchFunc, rootEl, resultSet) {
   resultSet = resultSet || new EmailObj();
   if (typeof rootEl === "undefined") rootEl = document.body;
 
+  // 'matched' will be either one of the prop names in Utility.eachEmail or "false"
   var matched = matchFunc(rootEl);
 
-  // might need a check to see if prop already exists
+  // if 'matched' exists, add the value to the assoc EmailObj prop
   if(matched){
+  	  // sender and email are in the same node
+  	  // sender is a text node, email is an attr
 	  if(matched === "sender") {
 	  	resultSet[matched] += rootEl.textContent;
-	  	// account for issue of emails being attr on the parent elem of "name" text nodes
 	  	// without this check, one of the two props, sender/email, will overwrite the other
 	  	resultSet.email = rootEl.getAttribute("email");
 	  }
 	  else {
+	  	// concat the email body string from the various text nodes under the "root email body" node
+	  	// **** is this where I should pass the EmailObj.id? I want to be able to access the EmailObj again *****
 	  	resultSet[matched] += textNodesUnder(rootEl);
 	  }
   }
 
+  // loop thru the elem's children and call recursively: check each node for correct class to add to EmailObj
   for(var i = 0; i < rootEl.children.length; i++) {
     // these calls return resultSet, but we don't care — the important thing
     // is that each function call is modifying the SAME resultSet
@@ -76,16 +81,44 @@ var traverseThreadAndBuildObj = function(matchFunc, rootEl, resultSet) {
   return resultSet;
 };
 
+function testFunc(event) {
+	console.log("event:", event);
+	event.preventDefault();
+	chrome.runtime.sendMessage({date: event.target.textContent}, function(res) {
+		console.log("response:", res);
+	})
+}
+
 function textNodesUnder(el){
   var n, a="", walk=document.createTreeWalker(el,NodeFilter.SHOW_TEXT,null,false);
   while(n=walk.nextNode()) {
-  	if(n.nodeValue) {
+  	if(n.parentNode.className === 'james-elem') {
+  		console.log("BLAHBLAH", n);
+  		walk.nextNode();
+  	}
+  	else if(n.nodeValue) {
+  		a += n.nodeValue;
   		// pass in elem and parse the body for any date-related words
   		// side effect that changes the html
-  		findDates(n);
-  		a += n.nodeValue;
+  		findDates(n, function(node, match, offset) {
+
+  			var span = document.createElement("span");
+  			span.className = "james-elem";
+  			span.textContent = match;
+
+  			span.onclick = testFunc.bind(span);
+
+  			node.parentNode.insertBefore(span, node.nextSibling)
+
+  			// !! Have to walk onto the newly created node, otherwise findDates will catch every loop -- to infinity and beyond !!
+  			// definitely my "hardest" bug yet
+  			// I was hitting a recursive loop catching the newly created node every time unless I console.log
+  			// but I was thinking I was logging properties, not running functions. 
+  			walk.nextNode();
+  			
+  		});
   	}
-  }
+  } 
   return a;
 }
 
@@ -113,13 +146,88 @@ function checkAttrs(elem){
 }
 
 
-function findDates(node) {
-	var testing = chrono.parse(node.nodeValue)
-	console.log("this is chrono: ", testing)
+function findDates(node, callback) {
+	var weekDate = new RegExp(/(?:\b((?:Mon)|(?:Tues?)|(?:Wed(?:nes)?)|(?:Thur?s?)|(?:Fri)|(?:Sat(?:ur)?)|(?:Sun))(?:day)?)?\b[:\-,]?\s?((^(?:jan|feb)?r?(?:uary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|oct(?:ober)?|(?:sept?|nov|dec)(?:ember))\s\d{1,2})(?:(?:[str])(?:[tdh])?)?[,]?(?:[\s\b,]{1})?((\d{4})?)/i);
 
-	// (/\b(?:(?:Mon)|(?:Tues?)|(?:Wed(?:nes)?)|(?:Thur?s?)|(?:Fri)|(?:Sat(?:ur)?)|(?:Sun))(?:day)?\b[:\-,]?\s*[a-zA-Z]{3,9}\s+\d{1,2}\s*,?\s*\d{4}/)
+	var datesWithSlashes = new RegExp(/(?:([0-3]?\d)\/([0-3]?\d)(?:\/(\d{1,4}))?)\b/i);
+	var dayOrRelative = new RegExp(/(?:(?:\b(?:(?:Mon)|(?:Tues?)|(?:Wed(?:nes)?)|(?:Thur?s?)|(?:Fri)|(?:Sat(?:ur)?)|(?:Sun))(?:day)?\b)|(?:(?:\b(?:to|yester)?(?:\B(?:night|morrow|day))\b)(?:\s(?:evening|night|morning|afternoon))?))(?:\s?(?:\@|at)\s?(?:(?:\d{1,2}(?::?\d{2})?)|noon))?(?:[a|p]m?(?:\b)?)?/i);
 
-	// (January|February|March|April|May|June?|July|August|September|October|November|December)\s(\d\d?).+?(\d\d\d\d)
+	if(weekDate.test(node.data)){
+		console.log("DAY, MMM DD, YYYY!:", node.data);
+		node.data.replace(weekDate, replaceWithElem)	
+	} 
+	else if(datesWithSlashes.test(node.data)) {
+		console.log("(#)#/(#)#/##(##):", node.data);
+	}
+	else if(dayOrRelative.test(node.data)) {
+		console.log("Relative!:", node.data);
+		node.data.replace(dayOrRelative, replaceWithElem)
+	}
+	else {
+		console.log("NONE MATCH!", node.data);
+		return;
+	}
+
+
+	function replaceWithElem(matchedStr) {
+		var args = [].slice.call(arguments),
+			offset = args[args.length-2],
+			newTextNode = node.splitText(offset);
+
+		// This is where the matched str is "deleted" from the nodeValue
+		newTextNode.data = newTextNode.data.substr(matchedStr.length);
+		
+		callback.apply(window, [node].concat(args));
+
+		node = newTextNode;
+	};
+
+	// take in the index and split the nodeValue at that index
+	// var	replaced = function(word){
+	// 	console.log("offset:", word)
+	// 	var textArr = node.nodeValue.split(word);
+	// 	console.log("nodeValue", textArr)
+		
+	// 	return textArr.join();
+	// }
+
+	// for each of the regex fxns
+	// for(var regex in matchObjs) {
+		
+
+	// 	node.nodeValue.replace(regex, function(all) {
+ //            var args = [].slice.call(arguments),
+ //                offset = args[args.length - 2],
+ //                newTextNode = node.splitText(offset);
+
+ //            console.log("AAAAARGS!", args);
+ //            console.log("offset: ", offset);
+ //            console.log("newTextNode: ", newTextNode)
+
+ //            // newTextNode.data = newTextNode.data.substr(all.length);
+
+ //            // callback.apply(window, [child].concat(args));
+
+ //            // child = newTextNode;
+ //            return newTextNode;
+ 
+ //        });
+
+
+
+		// find the starting index if there is a match
+		// var matched = node.nodeValue.match(matchObjs[each]);
+		
+		
+		// // var bold = document.createElement("em")
+		// // bold.id = "dateWord";
+		// // bold.innerHtml = "$1";
+		// if(matched >= 0) console.log(replaced(matched))
+		
+		// console.log("testing match:", matchObjs[each].test(node.nodeValue));
+	// }
+
+	// return node;
 }
 
 

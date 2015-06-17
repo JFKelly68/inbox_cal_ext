@@ -17,6 +17,7 @@ function EmailObj() {
 	this.email = "";
 	this.sendDate = "";
 	this.textBody = "";
+	this.id = Math.floor(Math.random()*1000000);
 };
 
 // change to listen on first element with role="list", maybe
@@ -50,21 +51,26 @@ var traverseThreadAndBuildObj = function(matchFunc, rootEl, resultSet) {
   resultSet = resultSet || new EmailObj();
   if (typeof rootEl === "undefined") rootEl = document.body;
 
+  // 'matched' will be either one of the prop names in Utility.eachEmail or "false"
   var matched = matchFunc(rootEl);
 
-  // might need a check to see if prop already exists
+  // if 'matched' exists, add the value to the assoc EmailObj prop
   if(matched){
+  	  // sender and email are in the same node
+  	  // sender is a text node, email is an attr
 	  if(matched === "sender") {
 	  	resultSet[matched] += rootEl.textContent;
-	  	// account for issue of emails being attr on the parent elem of "name" text nodes
 	  	// without this check, one of the two props, sender/email, will overwrite the other
 	  	resultSet.email = rootEl.getAttribute("email");
 	  }
 	  else {
+	  	// concat the email body string from the various text nodes under the "root email body" node
+	  	// **** is this where I should pass the EmailObj.id? I want to be able to access the EmailObj again *****
 	  	resultSet[matched] += textNodesUnder(rootEl);
 	  }
   }
 
+  // loop thru the elem's children and call recursively: check each node for correct class to add to EmailObj
   for(var i = 0; i < rootEl.children.length; i++) {
     // these calls return resultSet, but we don't care — the important thing
     // is that each function call is modifying the SAME resultSet
@@ -75,28 +81,41 @@ var traverseThreadAndBuildObj = function(matchFunc, rootEl, resultSet) {
   return resultSet;
 };
 
+function testFunc(event) {
+	console.log("event:", event);
+	event.preventDefault();
+	chrome.runtime.sendMessage({date: event.target.textContent}, function(res) {
+		console.log("response:", res);
+	})
+}
+
 function textNodesUnder(el){
   var n, a="", walk=document.createTreeWalker(el,NodeFilter.SHOW_TEXT,null,false);
   while(n=walk.nextNode()) {
-  	console.log("THIS IS N", n);
-  	if(n.nodeValue) {
+  	if(n.parentNode.className === 'james-elem') {
+  		console.log("BLAHBLAH", n);
+  		walk.nextNode();
+  	}
+  	else if(n.nodeValue) {
   		a += n.nodeValue;
   		// pass in elem and parse the body for any date-related words
   		// side effect that changes the html
   		findDates(n, function(node, match, offset) {
-  			console.log("CALLBACK ARGS!:", arguments);
-  			console.log("AND THIS IS THE NODE:", node);
 
   			var span = document.createElement("span");
-  			span.className = "test-elem";
+  			span.className = "james-elem";
   			span.textContent = match;
-  			// try changing 'n' to  'node'
+
+  			span.onclick = testFunc.bind(span);
+
   			node.parentNode.insertBefore(span, node.nextSibling)
 
-  			console.log("TREE WALKER OBJ", walk);
-  			console.log("TREE WALKER.nextNode", walk.nextNode());
-  			console.log("TREE WALKER.nextSibling", walk.nextSibling());
-  			console.log("TREE WALKER OBJ.parentNode", walk.parentNode());
+  			// !! Have to walk onto the newly created node, otherwise findDates will catch every loop -- to infinity and beyond !!
+  			// definitely my "hardest" bug yet
+  			// I was hitting a recursive loop catching the newly created node every time unless I console.log
+  			// but I was thinking I was logging properties, not running functions. 
+  			walk.nextNode();
+  			
   		});
   	}
   } 
@@ -128,15 +147,17 @@ function checkAttrs(elem){
 
 
 function findDates(node, callback) {
-	var weekDate = new RegExp(/\b(?:(?:Mon)|(?:Tues?)|(?:Wed(?:nes)?)|(?:Thur?s?)|(?:Fri)|(?:Sat(?:ur)?)|(?:Sun))(?:day)?\b[:\-,]?\s*[a-zA-Z]{3,9}\s+\d{1,2}\s*,?\s*\d{4}/i);
-	var monthDdYyyy = new RegExp(/(January|February|March|April|May|June?|July|August|September|October|November|December)\s(\d\d?).+?(\d\d\d\d)/i);
+	var weekDate = new RegExp(/(?:\b((?:Mon)|(?:Tues?)|(?:Wed(?:nes)?)|(?:Thur?s?)|(?:Fri)|(?:Sat(?:ur)?)|(?:Sun))(?:day)?)?\b[:\-,]?\s?((^(?:jan|feb)?r?(?:uary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|oct(?:ober)?|(?:sept?|nov|dec)(?:ember))\s\d{1,2})(?:(?:[str])(?:[tdh])?)?[,]?(?:[\s\b,]{1})?((\d{4})?)/i);
+
+	var datesWithSlashes = new RegExp(/(?:([0-3]?\d)\/([0-3]?\d)(?:\/(\d{1,4}))?)\b/i);
 	var dayOrRelative = new RegExp(/(?:(?:\b(?:(?:Mon)|(?:Tues?)|(?:Wed(?:nes)?)|(?:Thur?s?)|(?:Fri)|(?:Sat(?:ur)?)|(?:Sun))(?:day)?\b)|(?:(?:\b(?:to|yester)?(?:\B(?:night|morrow|day))\b)(?:\s(?:evening|night|morning|afternoon))?))(?:\s?(?:\@|at)\s?(?:(?:\d{1,2}(?::?\d{2})?)|noon))?(?:[a|p]m?(?:\b)?)?/i);
 
 	if(weekDate.test(node.data)){
-		console.log("DAY, MMM DD, YYYY!:", node.data);	
+		console.log("DAY, MMM DD, YYYY!:", node.data);
+		node.data.replace(weekDate, replaceWithElem)	
 	} 
-	else if(monthDdYyyy.test(node.data)) {
-		console.log("MMM DD, YYYY!:", node.data);
+	else if(datesWithSlashes.test(node.data)) {
+		console.log("(#)#/(#)#/##(##):", node.data);
 	}
 	else if(dayOrRelative.test(node.data)) {
 		console.log("Relative!:", node.data);
@@ -149,9 +170,6 @@ function findDates(node, callback) {
 
 
 	function replaceWithElem(matchedStr) {
-		console.log("replaceWithElem arguments:", arguments);
-		console.log("replaceWithElem 'matchedStr':", matchedStr);
-
 		var args = [].slice.call(arguments),
 			offset = args[args.length-2],
 			newTextNode = node.splitText(offset);

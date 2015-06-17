@@ -1,17 +1,14 @@
 'use strict';
 
-var sample = [
-{
-	date: "May 12th, 2015",
-	person: "Chris Kelly",
-	email: "kelly.christopherp@gmail.com"
-},
-{
-	date: "May 25th, 2015",
-	person: "Andrew Fried",
-	email: "kosherpineapple@gmail.com"
-}
-]
+chrome.runtime.getBackgroundPage(function(win) {
+	var sample = win.sample;
+	
+	React.render(
+		React.createElement(DateOptions, {data: sample}),
+  		document.getElementById('dates')
+	)
+})
+
 
 var NavBtns = React.createClass({displayName: "NavBtns",
 	goTo: function(queryMap, newUrl) {
@@ -77,7 +74,7 @@ var DateOptions = React.createClass({displayName: "DateOptions",
 	render: function() {
 		var dateList = this.props.data.map(function(obj) {
 			return (
-				React.createElement("div", {className: "dates", person: obj.person}, 
+				React.createElement("div", {person: obj.person}, 
 					obj.date
 				)
 			);
@@ -91,8 +88,3 @@ var DateOptions = React.createClass({displayName: "DateOptions",
 		)
 	}
 })
-
-React.render(
-	React.createElement(DateOptions, {data: sample}),
-  document.getElementById('dates')
-)
