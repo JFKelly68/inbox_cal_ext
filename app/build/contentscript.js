@@ -17,13 +17,18 @@ function EmailObj() {
 	this.email = "";
 	this.sendDate = "";
 	this.textBody = "";
-	this.id = Math.floor(Math.random()*1000000);
+	this._id = Math.floor(Math.random()*1000000);
 };
+
+var elements;
 
 // change to listen on first element with role="list", maybe
 document.getElementsByTagName("body")[0].addEventListener("click", function(event) {
-	var elements = scrapeThread();
-	console.log("not poop", elements);
+	event.stopPropagation();
+	if(event.target.className !== 'james-elem'){
+		elements = scrapeThread();
+		console.log("not poop", elements);
+	}
 })
 
 function scrapeThread() {
@@ -66,7 +71,7 @@ var traverseThreadAndBuildObj = function(matchFunc, rootEl, resultSet) {
 	  else {
 	  	// concat the email body string from the various text nodes under the "root email body" node
 	  	// **** is this where I should pass the EmailObj.id? I want to be able to access the EmailObj again *****
-	  	resultSet[matched] += textNodesUnder(rootEl);
+	  	resultSet[matched] += textNodesUnder(rootEl, resultSet._id);
 	  }
   }
 
@@ -81,15 +86,18 @@ var traverseThreadAndBuildObj = function(matchFunc, rootEl, resultSet) {
   return resultSet;
 };
 
-function testFunc(event) {
-	console.log("event:", event);
-	event.preventDefault();
-	chrome.runtime.sendMessage({date: event.target.textContent}, function(res) {
+function sendToPopup(text, id) {
+	var emailObjToSend = elements.filter(function(obj) {
+		return obj._id === id;
+	})
+	emailObjToSend[0].targetDate = text;
+	console.log("emailObj", emailObjToSend)
+	chrome.runtime.sendMessage(emailObjToSend[0], function(res) {
 		console.log("response:", res);
 	})
 }
 
-function textNodesUnder(el){
+function textNodesUnder(el, emailID){
   var n, a="", walk=document.createTreeWalker(el,NodeFilter.SHOW_TEXT,null,false);
   while(n=walk.nextNode()) {
   	if(n.parentNode.className === 'james-elem') {
@@ -106,7 +114,7 @@ function textNodesUnder(el){
   			span.className = "james-elem";
   			span.textContent = match;
 
-  			span.onclick = testFunc.bind(span);
+  			span.onclick = sendToPopup.bind(span, match, emailID);
 
   			node.parentNode.insertBefore(span, node.nextSibling)
 
@@ -148,32 +156,42 @@ function checkAttrs(elem){
 
 function findDates(node, callback) {
 	var weekDate = new RegExp(/(?:\b((?:Mon)|(?:Tues?)|(?:Wed(?:nes)?)|(?:Thur?s?)|(?:Fri)|(?:Sat(?:ur)?)|(?:Sun))(?:day)?)?\b[:\-,]?\s?((^(?:jan|feb)?r?(?:uary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|oct(?:ober)?|(?:sept?|nov|dec)(?:ember))\s\d{1,2})(?:(?:[str])(?:[tdh])?)?[,]?(?:[\s\b,]{1})?((\d{4})?)/i);
-
 	var datesWithSlashes = new RegExp(/(?:([0-3]?\d)\/([0-3]?\d)(?:\/(\d{1,4}))?)\b/i);
-	var dayOrRelative = new RegExp(/(?:(?:\b(?:(?:Mon)|(?:Tues?)|(?:Wed(?:nes)?)|(?:Thur?s?)|(?:Fri)|(?:Sat(?:ur)?)|(?:Sun))(?:day)?\b)|(?:(?:\b(?:to|yester)?(?:\B(?:night|morrow|day))\b)(?:\s(?:evening|night|morning|afternoon))?))(?:\s?(?:\@|at)\s?(?:(?:\d{1,2}(?::?\d{2})?)|noon))?(?:[a|p]m?(?:\b)?)?/i);
+	// consider reverting this back to before relative dates were mixed with actual dates.
+	var dayOrRelative = new RegExp(/((?:\b(?:(?:Mon)|(?:Tues?)|(?:Wed(?:nes)?)|(?:Thur?s?)|(?:Fri)|(?:Sat(?:ur)?)|(?:Sun))(?:day)?\b)|(?:(?:\b(?:to|yester)?(?:\B(?:night|morrow|day))\b)(?:\s(?:evening|night|morning|afternoon))?))(?:(?:\,?\s)?((?:\b(?:(?:Mon)|(?:Tues?)|(?:Wed(?:nes)?)|(?:Thur?s?)|(?:Fri)|(?:Sat(?:ur)?)|(?:Sun))(?:day)?\b)?(?:\s?the\s?)?(?:\d{1,2}(?:[str])(?:[tdh])?)))?(\s(?:\@|at)\s?(?:(?:\d{1,2}(?::?\d{2})?)|noon))?([a|p]m?(?:\b)?)?/i);
+
+	var matchedExists = false;
 
 	if(weekDate.test(node.data)){
 		console.log("DAY, MMM DD, YYYY!:", node.data);
-		node.data.replace(weekDate, replaceWithElem)	
+		matchedExists = true;
+		node.data.replace(weekDate, replaceWithElem);	
 	} 
-	else if(datesWithSlashes.test(node.data)) {
+	if(datesWithSlashes.test(node.data)) {
 		console.log("(#)#/(#)#/##(##):", node.data);
+		matchedExists = true;
+		node.data.replace(datesWithSlashes, replaceWithElem);	
 	}
-	else if(dayOrRelative.test(node.data)) {
+	if(dayOrRelative.test(node.data)) {
 		console.log("Relative!:", node.data);
+		matchedExists = true;
 		node.data.replace(dayOrRelative, replaceWithElem)
 	}
-	else {
+	if(!matchedExists){
 		console.log("NONE MATCH!", node.data);
 		return;
 	}
 
 
 	function replaceWithElem(matchedStr) {
+		// turn args into actual array
+		// capture the index on the match within str
+		// create a new text node starting from offset index
 		var args = [].slice.call(arguments),
 			offset = args[args.length-2],
 			newTextNode = node.splitText(offset);
 
+			console.log("ARGS", args)
 		// This is where the matched str is "deleted" from the nodeValue
 		newTextNode.data = newTextNode.data.substr(matchedStr.length);
 		

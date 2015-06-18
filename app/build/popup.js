@@ -2,7 +2,9 @@
 
 chrome.runtime.getBackgroundPage(function(win) {
 	var sample = win.sample;
-	
+	console.log(win.sample)
+	console.log(win);
+
 	React.render(
 		React.createElement(DateOptions, {data: sample}),
   		document.getElementById('dates')
@@ -70,12 +72,15 @@ React.render(
 	document.getElementById("navigate")
 )
 
+// render happens up in the chrome.runtime
 var DateOptions = React.createClass({displayName: "DateOptions",
 	render: function() {
 		var dateList = this.props.data.map(function(obj) {
 			return (
-				React.createElement("div", {person: obj.person}, 
-					obj.date
+				React.createElement("div", {className: "date-data"}, 
+					React.createElement("span", null, obj.date), 
+					React.createElement("span", null, obj.person), 
+					React.createElement("span", null, obj.targetDate)
 				)
 			);
 		});

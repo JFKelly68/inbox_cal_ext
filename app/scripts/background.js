@@ -8,7 +8,10 @@ chrome.browserAction.setBadgeText({text: '\'Allo'});
 
 console.log('\'Allo \'Allo! Event Page for Browser Action');
 
-var sample = [
+var chrono = require('chrono-node');
+
+// Because getBackgroundPage() returns window object, must make this global
+window.sample = [
 	{
 		date: "May 12th, 2015",
 		person: "Chris Kelly",
@@ -22,10 +25,11 @@ var sample = [
 ]
 
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-	console.log("Listening and hearing");
-	alert(request.date);
-	if(request.date) {
-		sample.push(request);
+	console.log("Listening and hearing", request.targetDate);
+	if(request.targetDate) {
+		request.date = chrono.parseDate(request.targetDate).toString();
+		console.log(request);
+		window.sample.push(request);
 		sendResponse({test: "farts"});
 	}
 	sendResponse({test: "no farts"});
