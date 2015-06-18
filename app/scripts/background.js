@@ -27,7 +27,7 @@ window.sample = [
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 	console.log("Listening and hearing", request.targetDate);
 	if(request.targetDate) {
-		request.date = chrono.parseDate(request.targetDate).toString();
+		request.date = chrono.parseDate(request.targetDate).toString().substr(0,16);
 		console.log(request);
 		window.sample.push(request);
 		sendResponse({test: "farts"});
