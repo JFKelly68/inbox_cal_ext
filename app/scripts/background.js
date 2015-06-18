@@ -30,7 +30,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 		request.date = chrono.parseDate(request.targetDate).toString().substr(0,16);
 		console.log(request);
 		window.sample.push(request);
-		sendResponse({test: "farts"});
+		sendResponse({test: "success"});
 	}
-	sendResponse({test: "no farts"});
+	sendResponse({test: "nothing"});
 })

@@ -27,7 +27,7 @@ document.getElementsByTagName("body")[0].addEventListener("click", function(even
 	event.stopPropagation();
 	if(event.target.className !== 'james-elem'){
 		elements = scrapeThread();
-		console.log("not poop", elements);
+		console.log("elements", elements);
 	}
 })
 
